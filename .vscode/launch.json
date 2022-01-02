@@ -1,0 +1,52 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'slip'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=slip",
+                    "--package=slip"
+                ],
+                "filter": {
+                    "name": "slip",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                // "--work",
+                "clone",
+                // "git@github.com:cedric05/dothttp-runner",
+                "https://github.com/cedric05/dothttp-runner",
+
+                // "asdf"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'slip'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=slip",
+                    "--package=slip"
+                ],
+                "filter": {
+                    "name": "slip",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
