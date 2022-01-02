@@ -1,7 +1,10 @@
 [package]
 edition = "2021"
-name = "slip"
+name = "slip_git"
 version = "0.1.0"
+authors = ["Shiva Prasanth <kesavarapu.siva@gmail.com>"]
+description = "Simple `slip` command (git clone runner to better categorize personal repos and work repos)."
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 clap = { version = "3.0.0", features = ["derive"] }

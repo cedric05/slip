@@ -3,8 +3,8 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 use clap::StructOpt;
-use slip::args::{Args, Commands};
-use slip::config::Config;
+use slip_git::args::{Args, Commands};
+use slip_git::config::Config;
 use url::Url;
 
 fn main() {

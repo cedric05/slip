@@ -275,7 +275,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "slip"
+name = "slip_git"
 version = "0.1.0"
 dependencies = [
  "clap",
