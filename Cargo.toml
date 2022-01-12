@@ -1,7 +1,7 @@
 [package]
 edition = "2021"
 name = "slip_git"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Shiva Prasanth <kesavarapu.siva@gmail.com>"]
 description = "Simple `slip` command (git clone runner to better categorize personal repos and work repos)."
 license = "MIT OR Apache-2.0"

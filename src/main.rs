@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -7,7 +8,7 @@ use slip_git::args::{Args, Commands};
 use slip_git::config::Config;
 use url::Url;
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let cli = Args::parse();
 
     match &cli.command {
@@ -17,7 +18,7 @@ fn main() {
                 .map(|x| toml::from_str(&x))
                 .unwrap_or_else(|_| Ok(Config::new()))
                 .unwrap();
-            let reporoot = if cli.personal {
+            let (reporoot, pattern) = if cli.personal {
                 config.personal()
             } else if cli.work {
                 config.work()
@@ -28,23 +29,26 @@ fn main() {
             if !reporoot.exists() {
                 fs::create_dir_all(reporoot).expect("not able to create directory")
             }
-            let directory_to_clone =
-                Path::new(reporoot).join(dir.as_ref().map(|x| x.to_owned()).unwrap_or_else(|| {
-                    /*
-                     *
-                     * Its created for my case. may not work for all
-                     * where git clone github.com/adsfdsafa
-                     * here, username is username of user running
-                     */
-                    // https://github.com/gitignore/gitignore
-                    if url.starts_with("https://") {
-                        Url::parse(url).unwrap().path()[1..].to_string()
-                    } else {
-                        // git@github.com/gitignore/gitignore
-                        let at = url.rfind(':').unwrap() + 1;
-                        url[at..(url.len())].to_owned()
-                    }
-                }));
+            let directory_to_clone = if let Some(dir) = dir {
+                Path::new(reporoot).join(dir)
+            } else {
+                /*
+                 *
+                 * Its created for my case. may not work for all
+                 * where git clone github.com/adsfdsafa
+                 * here, username is username of user running
+                 */
+                // https://github.com/gitignore/gitignore
+                // use pattern to better create repos
+                let strip_hostname = if url.starts_with("https://") {
+                    let from = String::from(Url::parse(url)?.path());
+                    String::from(from.split_at(1).1)
+                } else {
+                    // git@github.com/gitignore/gitignore
+                    url[(url.rfind(':').unwrap() + 1)..(url.len())].to_string()
+                };
+                Path::new(reporoot).join(pattern.get_directory(strip_hostname))
+            };
             let clone_command_str = format!(
                 "git clone {} {}",
                 url,
@@ -72,4 +76,5 @@ fn main() {
             };
         }
     };
+    Ok(())
 }
