@@ -5,13 +5,24 @@ use std::process::{Command, Stdio};
 
 use clap::StructOpt;
 use slip_git::args::{Args, Commands};
-use slip_git::config::Config;
+use slip_git::config::{Config, WorkOrPersonal};
 use url::Url;
+
+mod repolist;
+
+use repolist::*;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Args::parse();
 
     match &cli.command {
+        Commands::List => {
+            let repos_list = RepoList::get_config()?;
+            repos_list
+                .repos
+                .iter()
+                .for_each(|repo| println!("{}", repo))
+        }
         Commands::Clone { url, dir } => {
             let config = cli.config();
             let config: Config = fs::read_to_string(config)
@@ -70,7 +81,27 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .stdout(Stdio::piped()) // write to terminal
                 .spawn();
             if let Ok(mut child) = spawn {
-                child.wait().expect("child command ran into error");
+                let status = child.wait().expect("child command ran into error");
+                if status.success() {
+                    let mut repos_list = RepoList::get_config()?;
+                    repos_list.repos.push(Repo {
+                        url: url.to_string(),
+                        location: directory_to_clone.to_string_lossy().into_owned(),
+                        name: directory_to_clone
+                            .file_name()
+                            .unwrap()
+                            .to_string_lossy()
+                            .into_owned(),
+                        category: {
+                            if cli.work {
+                                WorkOrPersonal::Work
+                            } else {
+                                WorkOrPersonal::Personal
+                            }
+                        },
+                    });
+                    repos_list.save_config();
+                }
             } else {
                 println!("child command ran into error");
             };

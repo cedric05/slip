@@ -1,4 +1,6 @@
-use serde_derive::Deserialize;
+use std::fmt::Display;
+
+use serde_derive::{Deserialize, Serialize};
 
 
 #[derive(Deserialize, Debug)]
@@ -8,10 +10,19 @@ pub struct Config {
     personal: Option<RepoRoot>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Serialize)]
 pub enum WorkOrPersonal {
     Work,
     Personal,
+}
+
+impl Display for WorkOrPersonal{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WorkOrPersonal::Work => write!(f, "Work"),
+            WorkOrPersonal::Personal => write!(f, "Personal"),
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]

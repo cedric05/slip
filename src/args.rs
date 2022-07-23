@@ -33,4 +33,6 @@ impl Args {
 pub enum Commands {
     /// clone repository
     Clone { url: String, dir: Option<String> },
+
+    List
 }
