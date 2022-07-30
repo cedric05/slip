@@ -164,7 +164,10 @@ fn run_app<B: Backend>(
                         }
                         return Ok(());
                     }
-                    KeyCode::Char(a) => app.search_text.push(a),
+                    KeyCode::Char(a) => {
+                        app.search_text.push(a);
+                        app.items.unselect();
+                    }
                     KeyCode::Backspace => {
                         app.search_text.pop();
                     }
