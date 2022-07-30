@@ -1,4 +1,4 @@
-use crate::WorkOrPersonal;
+use crate::{repolist::Repo, WorkOrPersonal};
 
 use super::repolist::RepoList;
 use crossterm::{
@@ -145,7 +145,8 @@ fn run_app<B: Backend>(
                                 .repolist
                                 .repos
                                 .iter()
-                                .filter(|x| x.location.contains(&app.search_text))
+                                .filter(|repo| filter_category(repo, &app.category))
+                                .filter(|repo| filter_search_text(repo, &app.search_text))
                                 .nth(index);
                             if let Some(selected) = selected {
                                 let mut execute_command;
@@ -174,6 +175,19 @@ fn run_app<B: Backend>(
     }
 }
 
+fn filter_search_text(repo: &Repo, search_text: &str) -> bool {
+    repo.name
+        .to_lowercase()
+        .contains(&search_text.to_lowercase())
+}
+
+fn filter_category(repo: &Repo, category: &Option<WorkOrPersonal>) -> bool {
+    match category {
+        Some(category) => category == &repo.category,
+        None => true,
+    }
+}
+
 fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     // Create two chunks with equal horizontal screen space
     let chunks = Layout::default()
@@ -191,11 +205,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .repolist
         .repos
         .iter()
-        .filter(|repo| match &app.category {
-            Some(category) => category == &repo.category,
-            None => true,
-        })
-        .filter(|repo| repo.name.contains(&app.search_text))
+        .filter(|repo| filter_category(repo, &app.category))
+        .filter(|repo| filter_search_text(repo, &app.search_text))
         .map(|i| {
             let mut lines = vec![Spans::from(Span::styled(
                 i.name.clone(),
