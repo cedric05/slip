@@ -32,7 +32,11 @@ impl Args {
 #[derive(Subcommand, Debug, Clone)]
 pub enum Commands {
     /// clone repository
-    Clone { url: String, dir: Option<String> },
+    Clone {
+        url: String,
+        dir: Option<String>,
+    },
 
-    List
+    List,
+    Ui,
 }

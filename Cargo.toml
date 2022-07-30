@@ -13,6 +13,8 @@ serde_derive = "1.0.133"
 serde = "1.0.133"
 shellexpand = "2.1.0"
 url = "2.2.1"
+tui = "0.18.0"
+crossterm = "0.24.0"
 
 [[bin]]
 name = "slip"

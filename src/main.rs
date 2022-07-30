@@ -9,6 +9,7 @@ use slip_git::config::{Config, WorkOrPersonal};
 use url::Url;
 
 mod repolist;
+mod tui;
 
 use repolist::*;
 
@@ -16,6 +17,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cli = Args::parse();
 
     match &cli.command {
+        Commands::Ui => {
+            tui::main()?;
+        }
         Commands::List => {
             let repos_list = RepoList::get_config()?;
             repos_list

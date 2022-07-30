@@ -1,5 +1,5 @@
 use serde_derive::{Deserialize, Serialize};
-use slip_git::config::WorkOrPersonal;
+use super::WorkOrPersonal;
 use std::error::Error;
 use std::fmt::Display;
 use std::fs;
