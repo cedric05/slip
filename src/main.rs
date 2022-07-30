@@ -18,7 +18,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match &cli.command {
         Commands::Ui => {
-            tui::main()?;
+            let category_filter = if cli.personal{
+                Some(WorkOrPersonal::Personal)
+            } else if cli.work{
+                Some(WorkOrPersonal::Work)
+            } else {
+                None
+            };
+            tui::main(category_filter)?;
         }
         Commands::List => {
             let repos_list = RepoList::get_config()?;
@@ -58,9 +65,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let strip_hostname = if url.starts_with("https://") {
                     let from = String::from(Url::parse(url)?.path());
                     String::from(from.split_at(1).1)
-                } else {
-                    // git@github.com/gitignore/gitignore
+                } else if url.starts_with("git@") {
+                    // git@github.com:gitignore/gitignore
                     url[(url.rfind(':').unwrap() + 1)..(url.len())].to_string()
+                } else {
+                    "".to_owned()
                 };
                 Path::new(reporoot).join(pattern.get_directory(strip_hostname))
             };

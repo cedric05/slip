@@ -1,3 +1,5 @@
+use crate::WorkOrPersonal;
+
 use super::repolist::RepoList;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
@@ -73,18 +75,20 @@ impl StatefulList {
 struct App {
     items: StatefulList,
     search_text: String,
+    category: Option<WorkOrPersonal>,
 }
 
 impl App {
-    fn new(repolist: RepoList) -> App {
+    fn new(repolist: RepoList, category: Option<WorkOrPersonal>) -> App {
         App {
             items: StatefulList::with_items(repolist),
             search_text: String::new(),
+            category,
         }
     }
 }
 
-pub fn main() -> Result<(), Box<dyn Error>> {
+pub fn main(category: Option<WorkOrPersonal>) -> Result<(), Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -95,7 +99,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     // create app and run it
     let tick_rate = Duration::from_millis(250);
     let repolist = RepoList::get_config()?;
-    let app = App::new(repolist);
+    let app = App::new(repolist, category);
     let res = run_app(&mut terminal, app, tick_rate);
 
     // restore terminal
@@ -187,6 +191,10 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .repolist
         .repos
         .iter()
+        .filter(|repo| match &app.category {
+            Some(category) => category == &repo.category,
+            None => true,
+        })
         .filter(|repo| repo.name.contains(&app.search_text))
         .map(|i| {
             let mut lines = vec![Spans::from(Span::styled(

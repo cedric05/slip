@@ -10,7 +10,7 @@ pub struct Config {
     personal: Option<RepoRoot>,
 }
 
-#[derive(Deserialize, Debug, Serialize)]
+#[derive(Deserialize, Debug, Serialize, PartialEq, Eq)]
 pub enum WorkOrPersonal {
     Work,
     Personal,

@@ -12,7 +12,7 @@
                 "args": [
                     "build",
                     "--bin=slip",
-                    "--package=slip"
+                    "--package=slip_git"
                 ],
                 "filter": {
                     "name": "slip",
@@ -20,10 +20,10 @@
                 }
             },
             "args": [
-                // "--work",
+                "--work",
                 "clone",
                 // "git@github.com:cedric05/dothttp-runner",
-                "https://github.com/cedric05/dothttp-runner",
+                "git@ssh.dev.azure.com:v3/msazuredev/AzureForOperators/clearwater-curl",
 
                 // "asdf"
             ],
@@ -38,7 +38,7 @@
                     "test",
                     "--no-run",
                     "--bin=slip",
-                    "--package=slip"
+                    "--package=slip_git"
                 ],
                 "filter": {
                     "name": "slip",
