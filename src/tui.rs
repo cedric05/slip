@@ -192,7 +192,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     // Create two chunks with equal horizontal screen space
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(20), Constraint::Percentage(90)].as_ref())
+        .constraints([Constraint::Percentage(10), Constraint::Percentage(90)].as_ref())
         .split(f.size());
 
     let input = Paragraph::new(app.search_text.as_ref())
@@ -207,15 +207,16 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .iter()
         .filter(|repo| filter_category(repo, &app.category))
         .filter(|repo| filter_search_text(repo, &app.search_text))
-        .map(|i| {
+        .map(|repo| {
             let mut lines = vec![Spans::from(Span::styled(
-                i.name.clone(),
+                format!("{}  {}", repo.name, repo.category),
                 Style::default().add_modifier(Modifier::BOLD),
             ))];
             lines.push(Spans::from(Span::styled(
-                i.location.clone(),
+                repo.location.clone(),
                 Style::default()
                     .fg(Color::LightCyan)
+                    .add_modifier(Modifier::UNDERLINED)
                     .add_modifier(Modifier::ITALIC),
             )));
             ListItem::new(lines).style(Style::default().fg(Color::Black).bg(Color::White))
