@@ -61,8 +61,8 @@ impl StatefulList {
         self.state.select(Some(i));
     }
 
-    fn unselect(&mut self) {
-        self.state.select(None);
+    fn select_0(&mut self) {
+        self.state.select(Some(0));
     }
 }
 
@@ -134,7 +134,7 @@ fn run_app<B: Backend>(
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Esc => return Ok(()),
-                    KeyCode::Left => app.items.unselect(),
+                    KeyCode::Left => app.items.select_0(),
                     KeyCode::Down => app.items.next(),
                     KeyCode::Up => app.items.previous(),
                     KeyCode::Enter => {
@@ -166,7 +166,7 @@ fn run_app<B: Backend>(
                     }
                     KeyCode::Char(a) => {
                         app.search_text.push(a);
-                        app.items.unselect();
+                        app.items.select_0();
                     }
                     KeyCode::Backspace => {
                         app.search_text.pop();

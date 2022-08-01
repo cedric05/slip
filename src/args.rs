@@ -13,10 +13,10 @@ pub struct Args {
     #[clap(short, long, default_value = "~/.slip.toml")]
     pub config: String,
 
-    #[clap(short, long)]
+    #[clap(global = true, short, long)]
     pub work: bool,
 
-    #[clap(short, long)]
+    #[clap(global = true, short, long)]
     pub personal: bool,
 
     #[clap(subcommand)]
