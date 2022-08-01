@@ -2,12 +2,11 @@ use std::fmt::Display;
 
 use serde_derive::{Deserialize, Serialize};
 
-
 #[derive(Deserialize, Debug)]
 pub struct Config {
     pub default: Option<WorkOrPersonal>,
-    work: Option<RepoRoot>,
-    personal: Option<RepoRoot>,
+    pub work: Option<RepoRoot>,
+    pub personal: Option<RepoRoot>,
 }
 
 #[derive(Deserialize, Debug, Serialize, PartialEq, Eq)]
@@ -16,7 +15,7 @@ pub enum WorkOrPersonal {
     Personal,
 }
 
-impl Display for WorkOrPersonal{
+impl Display for WorkOrPersonal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             WorkOrPersonal::Work => write!(f, "Work"),
@@ -24,11 +23,18 @@ impl Display for WorkOrPersonal{
         }
     }
 }
+#[derive(Deserialize, Debug, Clone)]
+pub struct GitConfig {
+    pub email: Option<String>,
+    pub name: Option<String>,
+}
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct RepoRoot {
     pub root: Option<String>,
     pub pattern: Option<RepoNamePattern>,
+    #[serde(rename = "git")]
+    pub git_config: Option<GitConfig>,
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -76,6 +82,19 @@ impl RepoRoot {
 }
 
 impl Config {
+    pub fn get_git_config(&self, category: &WorkOrPersonal) -> Option<GitConfig> {
+        match category {
+            WorkOrPersonal::Work => self
+                .work
+                .as_ref()
+                .map(|work_config| work_config.git_config.clone()),
+            WorkOrPersonal::Personal => self
+                .personal
+                .as_ref()
+                .map(|personal_config| personal_config.git_config.clone()),
+        }
+        .flatten()
+    }
     pub fn work(&self) -> (String, RepoNamePattern) {
         if self.work.is_some() && self.work.as_ref().unwrap().root.is_some() {
             (

@@ -1,6 +1,8 @@
-use crate::{repolist::Repo, WorkOrPersonal};
+use crate::WorkOrPersonal;
 
-use super::repolist::RepoList;
+use super::execute as spawn_execute;
+use super::repolist::*;
+
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
@@ -9,7 +11,6 @@ use crossterm::{
 use std::{
     error::Error,
     io,
-    process::Command,
     time::{Duration, Instant},
 };
 use tui::{
@@ -149,16 +150,7 @@ fn run_app<B: Backend>(
                                 .filter(|repo| filter_search_text(repo, &app.search_text))
                                 .nth(index);
                             if let Some(selected) = selected {
-                                let mut execute_command;
-                                let clone_command_str = format!("code {}", selected.location);
-                                if cfg!(target_os = "windows") {
-                                    execute_command = Command::new("cmd");
-                                    execute_command.args(["/C", &clone_command_str]);
-                                } else {
-                                    execute_command = Command::new("sh");
-                                    execute_command.args(["-c", &clone_command_str]);
-                                };
-                                execute_command.spawn()?;
+                                spawn_execute(format!("code {}", selected.location), None)?;
                                 return Ok(());
                             }
                         }

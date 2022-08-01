@@ -37,6 +37,8 @@ pub enum Commands {
         dir: Option<String>,
     },
 
+    Reconfig,
+
     List,
     Ui,
 }

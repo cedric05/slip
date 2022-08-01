@@ -1,11 +1,12 @@
 use std::error::Error;
 use std::fs;
 use std::path::Path;
-use std::process::{Command, Stdio};
 
 use clap::StructOpt;
 use slip_git::args::{Args, Commands};
 use slip_git::config::{Config, WorkOrPersonal};
+use slip_git::execute;
+use slip_git::GitConfig;
 use url::Url;
 
 mod repolist;
@@ -18,9 +19,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match &cli.command {
         Commands::Ui => {
-            let category_filter = if cli.personal{
+            let category_filter = if cli.personal {
                 Some(WorkOrPersonal::Personal)
-            } else if cli.work{
+            } else if cli.work {
                 Some(WorkOrPersonal::Work)
             } else {
                 None
@@ -80,24 +81,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .to_str()
                     .expect("this should not error out")
             );
-            println!("{}", clone_command_str);
-            let mut execute_command;
-            if cfg!(target_os = "windows") {
-                execute_command = Command::new("cmd");
-                execute_command.args(["/C", &clone_command_str]);
-            } else {
-                execute_command = Command::new("sh");
-                execute_command.args(["-c", &clone_command_str]);
-            };
-            let spawn = execute_command
-                .stdin(Stdio::piped()) // write to terminal
-                .stdout(Stdio::piped()) // write to terminal
-                .spawn();
+            let spawn = execute(clone_command_str, None);
             if let Ok(mut child) = spawn {
                 let status = child.wait().expect("child command ran into error");
                 if status.success() {
                     let mut repos_list = RepoList::get_config()?;
-                    repos_list.repos.push(Repo {
+                    let repo = Repo {
                         url: url.to_string(),
                         location: directory_to_clone.to_string_lossy().into_owned(),
                         name: directory_to_clone
@@ -112,13 +101,42 @@ fn main() -> Result<(), Box<dyn Error>> {
                                 WorkOrPersonal::Personal
                             }
                         },
-                    });
+                    };
+                    configure_git(&repo, &config)?;
+                    repos_list.repos.push(repo);
                     repos_list.save_config();
                 }
             } else {
                 println!("child command ran into error");
             };
         }
+        Commands::Reconfig => {
+            let config = cli.config();
+            let config: Config = fs::read_to_string(config)
+                .map(|x| toml::from_str(&x))
+                .unwrap_or_else(|_| Ok(Config::new()))
+                .unwrap();
+            let repos_list = RepoList::get_config()?;
+            println!("config is {config:?}");
+            for repo in &repos_list.repos {
+                configure_git(repo, &config)?;
+            }
+        }
     };
     Ok(())
+}
+
+fn configure_git(repo: &Repo, config: &Config) -> Result<(), Box<dyn Error>> {
+    println!("configuring git for is {location} with {category}", location=repo.location, category=repo.category);
+    let git_config: Option<GitConfig> = config.get_git_config(&repo.category);
+    Ok(if let Some(GitConfig { email, name }) = git_config {
+        if let Some(email) = email {
+            let git_email_command = format!("git config user.email {email}");
+            execute(git_email_command, Some(repo.location.as_ref()))?.wait()?;
+        }
+        if let Some(name) = name {
+            let git_name_command = format!("git config user.name {name}");
+            execute(git_name_command, Some(repo.location.as_ref()))?.wait()?;
+        }
+    })
 }
