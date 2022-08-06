@@ -1,0 +1,2 @@
+- [ ] `list` should support filter as first argument
+- [ ] `cd` should invoke a new shell with `cd to destination directory`
