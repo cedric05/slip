@@ -41,12 +41,18 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .map(|x| toml::from_str(&x))
                 .unwrap_or_else(|_| Ok(Config::new()))
                 .unwrap();
-            let (reporoot, pattern) = if cli.personal {
-                config.personal()
+            let category = if cli.personal {
+                WorkOrPersonal::Personal
             } else if cli.work {
-                config.work()
+                WorkOrPersonal::Work
+            } else if config.default.is_some() {
+                config.default.unwrap()
             } else {
-                config.default()
+                WorkOrPersonal::Personal
+            };
+            let (reporoot, pattern) = match category {
+                WorkOrPersonal::Work => config.work(),
+                WorkOrPersonal::Personal => config.personal(),
             };
             let reporoot = Path::new(&reporoot);
             if !reporoot.exists() {
@@ -94,13 +100,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             .unwrap()
                             .to_string_lossy()
                             .into_owned(),
-                        category: {
-                            if cli.work {
-                                WorkOrPersonal::Work
-                            } else {
-                                WorkOrPersonal::Personal
-                            }
-                        },
+                        category,
                     };
                     configure_git(&repo, &config)?;
                     repos_list.repos.push(repo);
@@ -127,7 +127,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn configure_git(repo: &Repo, config: &Config) -> Result<(), Box<dyn Error>> {
-    println!("configuring git for is {location} with {category}", location=repo.location, category=repo.category);
+    println!(
+        "configuring git for is {location} with {category}",
+        location = repo.location,
+        category = repo.category
+    );
     let git_config: Option<GitConfig> = config.get_git_config(&repo.category);
     Ok(if let Some(GitConfig { email, name }) = git_config {
         if let Some(email) = email {
