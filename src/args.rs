@@ -39,6 +39,16 @@ pub enum Commands {
 
     Reconfig,
 
-    List,
+    List {
+        // filter repos
+        #[clap(index = 1)]
+        filter: Option<String>,
+    },
     Ui,
+
+    New {
+        // repo name
+        #[clap(index = 1)]
+        repo: String,
+    },
 }

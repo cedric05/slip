@@ -28,28 +28,25 @@ fn main() -> Result<(), Box<dyn Error>> {
             };
             tui::main(category_filter)?;
         }
-        Commands::List => {
+        Commands::List { filter } => {
+            let filter = match filter {
+                Some(filter) => filter,
+                None => "",
+            };
             let repos_list = RepoList::get_config()?;
             repos_list
                 .repos
                 .iter()
+                .filter(|repo| {
+                    repo.name.contains(&filter)
+                        || repo.location.contains(&filter)
+                        || repo.url.contains(&filter)
+                })
                 .for_each(|repo| println!("{}", repo))
         }
         Commands::Clone { url, dir } => {
-            let config = cli.config();
-            let config: Config = fs::read_to_string(config)
-                .map(|x| toml::from_str(&x))
-                .unwrap_or_else(|_| Ok(Config::new()))
-                .unwrap();
-            let category = if cli.personal {
-                WorkOrPersonal::Personal
-            } else if cli.work {
-                WorkOrPersonal::Work
-            } else if config.default.is_some() {
-                config.default.unwrap()
-            } else {
-                WorkOrPersonal::Personal
-            };
+            let config = get_config(&cli);
+            let category = get_profile(&cli, &config);
             let (reporoot, pattern) = match category {
                 WorkOrPersonal::Work => config.work(),
                 WorkOrPersonal::Personal => config.personal(),
@@ -122,8 +119,55 @@ fn main() -> Result<(), Box<dyn Error>> {
                 configure_git(repo, &config)?;
             }
         }
+        Commands::New { repo } => {
+            let config = get_config(&cli);
+            let category = get_profile(&cli, &config);
+            let (reporoot, _) = match category {
+                WorkOrPersonal::Work => config.work(),
+                WorkOrPersonal::Personal => config.personal(),
+            };
+            let reporoot = Path::new(&reporoot).join(&repo);
+            if !reporoot.exists() {
+                fs::create_dir_all(&reporoot).expect("not able to create directory")
+            }
+            let init_command_str = format!("git init");
+            let location = reporoot.to_str().unwrap().to_owned();
+            execute(init_command_str, Some(&location))?.wait()?;
+            let mut repos_list = RepoList::get_config()?;
+            let repo = Repo {
+                url: "".to_string(),
+                location,
+                name: repo.to_owned(),
+                category,
+            };
+            configure_git(&repo, &config)?;
+            repos_list.repos.push(repo);
+            repos_list.save_config();
+        }
     };
     Ok(())
+}
+
+fn get_config(cli: &Args) -> Config {
+    let config = cli.config();
+    let config: Config = fs::read_to_string(config)
+        .map(|x| toml::from_str(&x))
+        .unwrap_or_else(|_| Ok(Config::new()))
+        .unwrap();
+    config
+}
+
+fn get_profile(cli: &Args, config: &Config) -> WorkOrPersonal {
+    let category = if cli.personal {
+        WorkOrPersonal::Personal
+    } else if cli.work {
+        WorkOrPersonal::Work
+    } else if config.default.is_some() {
+        config.default.unwrap()
+    } else {
+        WorkOrPersonal::Personal
+    };
+    category
 }
 
 fn configure_git(repo: &Repo, config: &Config) -> Result<(), Box<dyn Error>> {
