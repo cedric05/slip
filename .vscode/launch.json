@@ -20,11 +20,9 @@
                 }
             },
             "args": [
-                "--work",
+                // "--work",
                 "clone",
-                // "git@github.com:cedric05/dothttp-runner",
-                "git@ssh.dev.azure.com:v3/msazuredev/AzureForOperators/clearwater-curl",
-
+                "git@github.com:cedric05/dothttp-runner",
                 // "asdf"
             ],
             "cwd": "${workspaceFolder}"

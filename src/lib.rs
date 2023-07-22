@@ -5,27 +5,24 @@ pub mod repolist;
 pub use config::*;
 pub mod tui;
 
-use std::process::{Command, Stdio};
+use std::process::{Command, ExitStatus};
 
 pub fn execute(
-    clone_command_str: String,
+    command_to_launch: String,
     current_dir: Option<&str>,
-) -> Result<std::process::Child, std::io::Error> {
-    println!("{}", clone_command_str);
+) -> Result<ExitStatus, std::io::Error> {
+    println!("{}", command_to_launch);
     let mut execute_command;
     if cfg!(target_os = "windows") {
         execute_command = Command::new("cmd");
-        execute_command.args(["/C", &clone_command_str]);
+        execute_command.args(["/C", &command_to_launch]);
     } else {
         execute_command = Command::new("sh");
-        execute_command.args(["-c", &clone_command_str]);
+        execute_command.args(["-c", &command_to_launch]);
     };
     if let Some(dir) = current_dir {
         execute_command.current_dir(dir);
     }
-    let spawn = execute_command
-        .stdin(Stdio::piped()) // write to terminal
-        .stdout(Stdio::piped()) // write to terminal
-        .spawn();
-    spawn
+    let spawn = execute_command.spawn()?.wait()?;
+    Ok(spawn)
 }

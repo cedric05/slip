@@ -1,5 +1,5 @@
-use serde_derive::{Deserialize, Serialize};
 use super::WorkOrPersonal;
+use serde_derive::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt::Display;
 use std::fs;

@@ -1,6 +1,5 @@
 use crate::WorkOrPersonal;
 
-use super::execute as spawn_execute;
 use super::repolist::*;
 
 use crossterm::{
@@ -89,7 +88,9 @@ impl App {
     }
 }
 
-pub fn main(category: Option<WorkOrPersonal>) -> Result<(), Box<dyn Error>> {
+pub fn main(
+    category: Option<WorkOrPersonal>,
+) -> Result<std::option::Option<Launch>, Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -112,18 +113,24 @@ pub fn main(category: Option<WorkOrPersonal>) -> Result<(), Box<dyn Error>> {
     )?;
     terminal.show_cursor()?;
 
-    if let Err(err) = res {
-        println!("{:?}", err)
-    }
+    Ok(res?)
+}
 
-    Ok(())
+pub enum LaunchType {
+    LaunchShell,
+    LaunchCode,
+}
+
+pub struct Launch {
+    pub directory: String,
+    pub launch_type: LaunchType,
 }
 
 fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
     mut app: App,
     tick_rate: Duration,
-) -> io::Result<()> {
+) -> io::Result<Option<Launch>> {
     let last_tick = Instant::now();
     loop {
         terminal.draw(|f| ui(f, &mut app))?;
@@ -134,27 +141,35 @@ fn run_app<B: Backend>(
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
-                    KeyCode::Esc => return Ok(()),
+                    KeyCode::Esc => return Ok(None),
                     KeyCode::Left => app.items.select_0(),
                     KeyCode::Down => app.items.next(),
                     KeyCode::Up => app.items.previous(),
+                    KeyCode::Insert => {
+                        let index = app.items.state.selected();
+                        if let Some(index) = index {
+                            let selected = selected(&app, index);
+                            if let Some(selected) = selected {
+                                return Ok(Some(Launch {
+                                    directory: selected.location.clone(),
+                                    launch_type: LaunchType::LaunchCode,
+                                }));
+                            }
+                        }
+                        return Ok(None);
+                    }
                     KeyCode::Enter => {
                         let index = app.items.state.selected();
                         if let Some(index) = index {
-                            let selected = app
-                                .items
-                                .repolist
-                                .repos
-                                .iter()
-                                .filter(|repo| filter_category(repo, &app.category))
-                                .filter(|repo| filter_search_text(repo, &app.search_text))
-                                .nth(index);
+                            let selected = selected(&app, index);
                             if let Some(selected) = selected {
-                                spawn_execute(format!("code {}", selected.location), None)?;
-                                return Ok(());
+                                return Ok(Some(Launch {
+                                    directory: selected.location.clone(),
+                                    launch_type: LaunchType::LaunchShell,
+                                }));
                             }
                         }
-                        return Ok(());
+                        return Ok(None);
                     }
                     KeyCode::Char(a) => {
                         app.search_text.push(a);
@@ -168,6 +183,18 @@ fn run_app<B: Backend>(
             }
         }
     }
+}
+
+fn selected(app: &App, index: usize) -> Option<&Repo> {
+    let selected = app
+        .items
+        .repolist
+        .repos
+        .iter()
+        .filter(|repo| filter_category(repo, &app.category))
+        .filter(|repo| filter_search_text(repo, &app.search_text))
+        .nth(index);
+    selected
 }
 
 fn filter_search_text(repo: &Repo, search_text: &str) -> bool {

@@ -20,7 +20,7 @@ pub struct Args {
     pub personal: bool,
 
     #[clap(subcommand)]
-    pub command: Commands,
+    pub command: Option<SubCommands>,
 }
 
 impl Args {
@@ -30,7 +30,7 @@ impl Args {
 }
 
 #[derive(Subcommand, Debug, Clone)]
-pub enum Commands {
+pub enum SubCommands {
     /// clone repository
     Clone {
         url: String,
@@ -48,6 +48,11 @@ pub enum Commands {
 
     New {
         // repo name
+        #[clap(index = 1)]
+        repo: String,
+    },
+
+    Add {
         #[clap(index = 1)]
         repo: String,
     },

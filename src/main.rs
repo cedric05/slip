@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 
 use clap::StructOpt;
-use slip_git::args::{Args, Commands};
+use slip_git::args::{Args, SubCommands};
 use slip_git::config::{Config, WorkOrPersonal};
 use slip_git::execute;
 use slip_git::GitConfig;
@@ -16,9 +16,12 @@ use repolist::*;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Args::parse();
-
-    match &cli.command {
-        Commands::Ui => {
+    let command = match cli.command {
+        Some(ref command) => command,
+        None => &SubCommands::Ui,
+    };
+    match command {
+        SubCommands::Ui => {
             let category_filter = if cli.personal {
                 Some(WorkOrPersonal::Personal)
             } else if cli.work {
@@ -26,9 +29,24 @@ fn main() -> Result<(), Box<dyn Error>> {
             } else {
                 None
             };
-            tui::main(category_filter)?;
+            let launch = tui::main(category_filter)?;
+            if let Some(launch) = launch {
+                match launch.launch_type {
+                    tui::LaunchType::LaunchShell => {
+                        let shell = if cfg!(target_os = "windows") {
+                            "cmd".to_string()
+                        } else {
+                            std::env::var("SHELL").expect("shell vairable not set")
+                        };
+                        execute(shell, Some(&launch.directory))?;
+                    }
+                    tui::LaunchType::LaunchCode => {
+                        execute(format!("code {}", launch.directory), None)?;
+                    }
+                };
+            }
         }
-        Commands::List { filter } => {
+        SubCommands::List { filter } => {
             let filter = match filter {
                 Some(filter) => filter,
                 None => "",
@@ -44,7 +62,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 })
                 .for_each(|repo| println!("{}", repo))
         }
-        Commands::Clone { url, dir } => {
+        SubCommands::Clone { url, dir } => {
             let config = get_config(&cli);
             let category = get_profile(&cli, &config);
             let (reporoot, pattern) = match category {
@@ -84,30 +102,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .to_str()
                     .expect("this should not error out")
             );
-            let spawn = execute(clone_command_str, None);
-            if let Ok(mut child) = spawn {
-                let status = child.wait().expect("child command ran into error");
-                if status.success() {
-                    let mut repos_list = RepoList::get_config()?;
-                    let repo = Repo {
-                        url: url.to_string(),
-                        location: directory_to_clone.to_string_lossy().into_owned(),
-                        name: directory_to_clone
-                            .file_name()
-                            .unwrap()
-                            .to_string_lossy()
-                            .into_owned(),
-                        category,
-                    };
-                    configure_git(&repo, &config)?;
-                    repos_list.repos.push(repo);
-                    repos_list.save_config();
+            match execute(clone_command_str, None) {
+                Ok(exit_code) => {
+                    if exit_code.success() {
+                        add_to_slip_repo_list(url, directory_to_clone, category, config)?;
+                    }
                 }
-            } else {
-                println!("child command ran into error");
+                Err(_) => println!("child command ran into error"),
             };
         }
-        Commands::Reconfig => {
+        SubCommands::Reconfig => {
             let config = cli.config();
             let config: Config = fs::read_to_string(config)
                 .map(|x| toml::from_str(&x))
@@ -119,7 +123,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 configure_git(repo, &config)?;
             }
         }
-        Commands::New { repo } => {
+        SubCommands::New { repo } => {
             let config = get_config(&cli);
             let category = get_profile(&cli, &config);
             let (reporoot, _) = match category {
@@ -132,7 +136,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
             let init_command_str = format!("git init");
             let location = reporoot.to_str().unwrap().to_owned();
-            execute(init_command_str, Some(&location))?.wait()?;
+            execute(init_command_str, Some(&location))?;
             let mut repos_list = RepoList::get_config()?;
             let repo = Repo {
                 url: "".to_string(),
@@ -144,7 +148,35 @@ fn main() -> Result<(), Box<dyn Error>> {
             repos_list.repos.push(repo);
             repos_list.save_config();
         }
+        SubCommands::Add { repo } => {
+            let config = get_config(&cli);
+            let category = get_profile(&cli, &config);
+            add_to_slip_repo_list("", repo.into(), category, config)?;
+        }
     };
+    Ok(())
+}
+
+fn add_to_slip_repo_list(
+    url: &str,
+    directory_to_clone: std::path::PathBuf,
+    category: WorkOrPersonal,
+    config: Config,
+) -> Result<(), Box<dyn Error>> {
+    let mut repos_list = RepoList::get_config()?;
+    let repo = Repo {
+        url: url.to_string(),
+        location: directory_to_clone.to_string_lossy().into_owned(),
+        name: directory_to_clone
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned(),
+        category,
+    };
+    configure_git(&repo, &config)?;
+    repos_list.repos.push(repo);
+    repos_list.save_config();
     Ok(())
 }
 
@@ -180,11 +212,11 @@ fn configure_git(repo: &Repo, config: &Config) -> Result<(), Box<dyn Error>> {
     Ok(if let Some(GitConfig { email, name }) = git_config {
         if let Some(email) = email {
             let git_email_command = format!("git config user.email {email}");
-            execute(git_email_command, Some(repo.location.as_ref()))?.wait()?;
+            execute(git_email_command, Some(repo.location.as_ref()))?;
         }
         if let Some(name) = name {
             let git_name_command = format!("git config user.name {name}");
-            execute(git_name_command, Some(repo.location.as_ref()))?.wait()?;
+            execute(git_name_command, Some(repo.location.as_ref()))?;
         }
     })
 }
