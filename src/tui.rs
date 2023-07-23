@@ -64,6 +64,38 @@ impl StatefulList {
     fn select_0(&mut self) {
         self.state.select(Some(0));
     }
+
+    fn go_ten_down(&mut self) {
+        let i = match self.state.selected() {
+            Some(i) => {
+                if i >= self.repolist.repos.len() - 10 {
+                    self.repolist.repos.len() - 1
+                } else {
+                    i + 10
+                }
+            }
+            None => 0,
+        };
+        self.state.select(Some(i));
+    }
+
+    fn go_ten_up(&mut self) {
+        let i = match self.state.selected() {
+            Some(i) => {
+                if i < 10 {
+                    0
+                } else {
+                    i - 10
+                }
+            }
+            None => 0,
+        };
+        self.state.select(Some(i));
+    }
+
+    fn end(&mut self) {
+        self.state.select(Some(self.repolist.repos.len() - 1));
+    }
 }
 
 /// This struct holds the current state of the app. In particular, it has the `items` field which is a wrapper
@@ -142,9 +174,12 @@ fn run_app<B: Backend>(
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Esc => return Ok(None),
-                    KeyCode::Left => app.items.select_0(),
-                    KeyCode::Down => app.items.next(),
-                    KeyCode::Up => app.items.previous(),
+                    KeyCode::Left | KeyCode::Home => app.items.select_0(),
+                    KeyCode::Right | KeyCode::End => app.items.end(),
+                    KeyCode::Down | KeyCode::Tab => app.items.next(),
+                    KeyCode::Up | KeyCode::BackTab => app.items.previous(),
+                    KeyCode::PageDown => app.items.go_ten_down(),
+                    KeyCode::PageUp => app.items.go_ten_up(),
                     KeyCode::Insert => {
                         let index = app.items.state.selected();
                         if let Some(index) = index {
@@ -296,6 +331,20 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
             Span::styled("B", bold),
             Span::from("ackspace --> delete last character "),
         ]),
+        // Spans::from(vec![
+        //     // left
+        //     Span::styled("P", bold),
+        //     Span::from("age Down --> current + 10"),
+        //     // down
+        //     Span::styled("P", bold),
+        //     Span::from("age Up --> current - 10"),
+        //     // up
+        //     Span::styled("H", bold),
+        //     Span::from("ome --> get to top"),
+        //     // backspace
+        //     Span::styled("E", bold),
+        //     Span::from("end --> get to bottom "),
+        // ]),
     ]));
     f.render_widget(cheatsheet, chunks[2]);
 }
