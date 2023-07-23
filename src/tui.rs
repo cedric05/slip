@@ -16,7 +16,7 @@ use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Span, Spans},
+    text::{Span, Spans, Text},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
     Frame, Terminal,
 };
@@ -214,7 +214,14 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     // Create two chunks with equal horizontal screen space
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(10), Constraint::Percentage(90)].as_ref())
+        .constraints(
+            [
+                Constraint::Percentage(10),
+                Constraint::Percentage(85),
+                Constraint::Percentage(5),
+            ]
+            .as_ref(),
+        )
         .split(f.size());
 
     let input = Paragraph::new(app.search_text.as_ref())
@@ -257,7 +264,38 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
     // We can now render the item list
     f.render_stateful_widget(items, chunks[1], &mut app.items.state);
-
     // Let's do the same for the events.
     // The event list doesn't have any state and only displays the current state of the list.
+    let bold = Style::default().add_modifier(Modifier::BOLD);
+    let cheatsheet = Paragraph::new(Text::from(vec![
+        Spans::from(vec![
+            //Esc
+            Span::styled("E", bold),
+            Span::from("sc --> exit        "),
+            // Enter
+            Span::styled("E", bold),
+            Span::from("nter --> change directory and shell    "),
+            // Insert
+            Span::styled("I", bold),
+            Span::from("nsert --> open in vscode       "),
+            // Any char
+            Span::styled("A", bold),
+            Span::from("ny char --> to search      "),
+        ]),
+        Spans::from(vec![
+            // left
+            Span::styled("L", bold),
+            Span::from("eft --> go to top  "),
+            // down
+            Span::styled("D", bold),
+            Span::from("own --> next                           "),
+            // up
+            Span::styled("U", bold),
+            Span::from("p --> previous                 "),
+            // backspace
+            Span::styled("B", bold),
+            Span::from("ackspace --> delete last character "),
+        ]),
+    ]));
+    f.render_widget(cheatsheet, chunks[2]);
 }
