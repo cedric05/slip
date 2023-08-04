@@ -1,3 +1,4 @@
+#![feature(is_sorted)]
 pub mod args;
 pub mod config;
 pub mod repolist;

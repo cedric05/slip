@@ -1,4 +1,6 @@
 use crate::WorkOrPersonal;
+use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::FuzzyMatcher;
 
 use super::repolist::*;
 
@@ -264,14 +266,24 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     f.render_widget(input, chunks[0]);
 
     // Iterate through all elements in the `items` app and append some debug text to it.
-    let items: Vec<ListItem> = app
+    let matcher = SkimMatcherV2::default();
+    let mut matched = app
         .items
         .repolist
         .repos
         .iter()
-        .filter(|repo| filter_category(repo, &app.category))
-        .filter(|repo| filter_search_text(repo, &app.search_text))
         .map(|repo| {
+            let out = matcher.fuzzy_match(&repo.name, &app.search_text);
+            (repo, out)
+        })
+        .filter(|x| x.1.is_some())
+        .map(|x| (x.0, x.1.unwrap()))
+        .collect::<Vec<_>>();
+    matched.sort_by(|a, b| a.1.cmp(&b.1));
+
+    let items: Vec<ListItem> = matched
+        .into_iter()
+        .map(|(repo, _order)| {
             let mut lines = vec![Spans::from(Span::styled(
                 format!("{}  {}", repo.name, repo.category),
                 Style::default().add_modifier(Modifier::BOLD),

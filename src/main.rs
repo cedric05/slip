@@ -1,3 +1,4 @@
+#![feature(is_sorted)]
 use std::error::Error;
 use std::fs;
 use std::path::Path;
