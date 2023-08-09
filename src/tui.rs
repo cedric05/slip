@@ -267,7 +267,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
     // Iterate through all elements in the `items` app and append some debug text to it.
     let matcher = SkimMatcherV2::default();
-    let mut matched = app
+    let matched = app
         .items
         .repolist
         .repos
@@ -279,7 +279,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .filter(|x| x.1.is_some())
         .map(|x| (x.0, x.1.unwrap()))
         .collect::<Vec<_>>();
-    matched.sort_by(|a, b| a.1.cmp(&b.1));
+    // matched.sort_by(|a, b| a.1.cmp(&b.1));
 
     let items: Vec<ListItem> = matched
         .into_iter()
