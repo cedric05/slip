@@ -198,7 +198,7 @@ fn run_app<B: Backend>(
                     KeyCode::Enter => {
                         let index = app.items.state.selected();
                         if let Some(index) = index {
-                            let selected = selected(&app, index);
+                            let selected: Option<&Repo> = selected(&app, index);
                             if let Some(selected) = selected {
                                 return Ok(Some(Launch {
                                     directory: selected.location.clone(),
@@ -223,28 +223,21 @@ fn run_app<B: Backend>(
 }
 
 fn selected(app: &App, index: usize) -> Option<&Repo> {
-    let selected = app
+    let matcher = SkimMatcherV2::default();
+    let mut matched = app
         .items
         .repolist
         .repos
         .iter()
-        .filter(|repo| filter_category(repo, &app.category))
-        .filter(|repo| filter_search_text(repo, &app.search_text))
-        .nth(index);
-    selected
-}
-
-fn filter_search_text(repo: &Repo, search_text: &str) -> bool {
-    repo.name
-        .to_lowercase()
-        .contains(&search_text.to_lowercase())
-}
-
-fn filter_category(repo: &Repo, category: &Option<WorkOrPersonal>) -> bool {
-    match category {
-        Some(category) => category == &repo.category,
-        None => true,
-    }
+        .map(|repo| {
+            let out = matcher.fuzzy_match(&repo.name, &app.search_text);
+            (repo, out)
+        })
+        .filter(|x| x.1.is_some())
+        .map(|x| (x.0, x.1.unwrap()))
+        .collect::<Vec<_>>();
+    matched.sort_by(|a, b| b.1.cmp(&a.1));
+    matched.iter().nth(index).map(|x| x.0)
 }
 
 fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
@@ -267,7 +260,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
     // Iterate through all elements in the `items` app and append some debug text to it.
     let matcher = SkimMatcherV2::default();
-    let matched = app
+    let mut matched = app
         .items
         .repolist
         .repos
@@ -279,13 +272,13 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .filter(|x| x.1.is_some())
         .map(|x| (x.0, x.1.unwrap()))
         .collect::<Vec<_>>();
-    // matched.sort_by(|a, b| a.1.cmp(&b.1));
+    matched.sort_by(|a, b| b.1.cmp(&a.1));
 
     let items: Vec<ListItem> = matched
         .into_iter()
         .map(|(repo, _order)| {
             let mut lines = vec![Spans::from(Span::styled(
-                format!("{}  {}", repo.name, repo.category),
+                format!("{} {}  {}", _order, repo.name, repo.category),
                 Style::default().add_modifier(Modifier::BOLD),
             ))];
             lines.push(Spans::from(Span::styled(
