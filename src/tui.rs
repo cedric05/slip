@@ -166,8 +166,9 @@ fn run_app<B: Backend>(
     tick_rate: Duration,
 ) -> io::Result<Option<Launch>> {
     let last_tick = Instant::now();
+    let matcher = SkimMatcherV2::default();
     loop {
-        terminal.draw(|f| ui(f, &mut app))?;
+        terminal.draw(|f| ui(f, &mut app, &matcher))?;
 
         let timeout = tick_rate
             .checked_sub(last_tick.elapsed())
@@ -185,8 +186,15 @@ fn run_app<B: Backend>(
                     KeyCode::Insert => {
                         let index = app.items.state.selected();
                         if let Some(index) = index {
-                            let selected = selected(&app, index);
-                            if let Some(selected) = selected {
+                            if let Some(selected) = find_matches_in_order(
+                                &app.items.repolist,
+                                &app.search_text,
+                                &matcher,
+                            )
+                            .into_iter()
+                            .nth(index)
+                            .map(|(repo, _)| repo)
+                            {
                                 return Ok(Some(Launch {
                                     directory: selected.location.clone(),
                                     launch_type: LaunchType::LaunchCode,
@@ -198,8 +206,15 @@ fn run_app<B: Backend>(
                     KeyCode::Enter => {
                         let index = app.items.state.selected();
                         if let Some(index) = index {
-                            let selected: Option<&Repo> = selected(&app, index);
-                            if let Some(selected) = selected {
+                            if let Some(selected) = find_matches_in_order(
+                                &app.items.repolist,
+                                &app.search_text,
+                                &matcher,
+                            )
+                            .into_iter()
+                            .nth(index)
+                            .map(|(repo, _)| repo)
+                            {
                                 return Ok(Some(Launch {
                                     directory: selected.location.clone(),
                                     launch_type: LaunchType::LaunchShell,
@@ -222,25 +237,26 @@ fn run_app<B: Backend>(
     }
 }
 
-fn selected(app: &App, index: usize) -> Option<&Repo> {
-    let matcher = SkimMatcherV2::default();
-    let mut matched = app
-        .items
-        .repolist
+fn find_matches_in_order<'a>(
+    repolist: &'a RepoList,
+    search_text: &'a str,
+    matcher: &SkimMatcherV2,
+) -> Vec<(&'a Repo, i64)> {
+    let mut matched = repolist
         .repos
         .iter()
         .map(|repo| {
-            let out = matcher.fuzzy_match(&repo.name, &app.search_text);
+            let out = matcher.fuzzy_match(&repo.name, search_text);
             (repo, out)
         })
         .filter(|x| x.1.is_some())
         .map(|x| (x.0, x.1.unwrap()))
         .collect::<Vec<_>>();
     matched.sort_by(|a, b| b.1.cmp(&a.1));
-    matched.iter().nth(index).map(|x| x.0)
+    matched
 }
 
-fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
+fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App, matcher: &SkimMatcherV2) {
     // Create two chunks with equal horizontal screen space
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -259,38 +275,24 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     f.render_widget(input, chunks[0]);
 
     // Iterate through all elements in the `items` app and append some debug text to it.
-    let matcher = SkimMatcherV2::default();
-    let mut matched = app
-        .items
-        .repolist
-        .repos
-        .iter()
-        .map(|repo| {
-            let out = matcher.fuzzy_match(&repo.name, &app.search_text);
-            (repo, out)
-        })
-        .filter(|x| x.1.is_some())
-        .map(|x| (x.0, x.1.unwrap()))
-        .collect::<Vec<_>>();
-    matched.sort_by(|a, b| b.1.cmp(&a.1));
-
-    let items: Vec<ListItem> = matched
-        .into_iter()
-        .map(|(repo, _order)| {
-            let mut lines = vec![Spans::from(Span::styled(
-                format!("{} {}  {}", _order, repo.name, repo.category),
-                Style::default().add_modifier(Modifier::BOLD),
-            ))];
-            lines.push(Spans::from(Span::styled(
-                repo.location.clone(),
-                Style::default()
-                    .fg(Color::LightCyan)
-                    .add_modifier(Modifier::UNDERLINED)
-                    .add_modifier(Modifier::ITALIC),
-            )));
-            ListItem::new(lines).style(Style::default().fg(Color::Black).bg(Color::White))
-        })
-        .collect();
+    let items: Vec<ListItem> =
+        find_matches_in_order(&app.items.repolist, &app.search_text, matcher)
+            .into_iter()
+            .map(|(repo, _order)| {
+                let mut lines = vec![Spans::from(Span::styled(
+                    format!("{} {}  {}", _order, repo.name, repo.category),
+                    Style::default().add_modifier(Modifier::BOLD),
+                ))];
+                lines.push(Spans::from(Span::styled(
+                    repo.location.clone(),
+                    Style::default()
+                        .fg(Color::LightCyan)
+                        .add_modifier(Modifier::UNDERLINED)
+                        .add_modifier(Modifier::ITALIC),
+                )));
+                ListItem::new(lines).style(Style::default().fg(Color::Black).bg(Color::White))
+            })
+            .collect();
 
     // Create a List from all list items and highlight the currently selected one
     let items = List::new(items)
